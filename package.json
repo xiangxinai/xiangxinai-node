@@ -1,0 +1,72 @@
+{
+  "name": "xiangxinai",
+  "version": "1.1.0",
+  "description": "象信AI安全护栏 Node.js 客户端 - 基于LLM的上下文感知AI安全护栏",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write src/**/*.ts",
+    "prepublishOnly": "npm run build",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "ai",
+    "safety",
+    "guardrails",
+    "llm",
+    "content-moderation",
+    "prompt-injection",
+    "security",
+    "compliance",
+    "xiangxin"
+  ],
+  "author": {
+    "name": "XiangxinAI",
+    "email": "wanglei@xiangxinai.cn"
+  },
+  "maintainers": [
+    {
+      "name": "XiangxinAI",
+      "email": "wanglei@xiangxinai.cn"
+    }
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiangxinai/xiangxin-guardrails.git",
+    "directory": "client/xiangxinai-nodejs"
+  },
+  "bugs": {
+    "url": "https://github.com/xiangxinai/xiangxin-guardrails/issues"
+  },
+  "homepage": "https://xiangxinai.cn",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "@types/jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0",
+    "prettier": "^3.0.0"
+  }
+}
