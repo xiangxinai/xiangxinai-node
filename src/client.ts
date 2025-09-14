@@ -29,9 +29,12 @@ import {
  * ```typescript
  * const client = new XiangxinAI({ apiKey: "your-api-key" });
  * 
- * // 检测提示词
+ * // 检测用户输入
  * const result = await client.checkPrompt("用户问题");
- * 
+ *
+ * // 检测输出内容（基于上下文）
+ * const result = await client.checkResponseCtx("用户问题", "助手回答");
+ *
  * // 检测对话上下文
  * const messages = [
  *   { role: "user", content: "问题" },
@@ -62,7 +65,7 @@ export class XiangxinAI {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'xiangxinai-nodejs/1.1.0'
+        'User-Agent': 'xiangxinai-nodejs/2.0.0'
       }
     });
   }
@@ -90,10 +93,9 @@ export class XiangxinAI {
   }
 
   /**
-   * 检测提示词的安全性
-   * 
-   * @param content 要检测的提示词内容
-   * @param model 使用的模型名称
+   * 检测用户输入的安全性
+   *
+   * @param content 要检测的用户输入内容
    * @returns 检测结果，格式为：
    * ```
    * {
@@ -113,12 +115,12 @@ export class XiangxinAI {
    *   "suggest_answer": "建议回答内容"
    * }
    * ```
-   * 
+   *
    * @throws {ValidationError} 输入参数无效
    * @throws {AuthenticationError} 认证失败
    * @throws {RateLimitError} 超出速率限制
    * @throws {XiangxinAIError} 其他API错误
-   * 
+   *
    * @example
    * ```typescript
    * const result = await client.checkPrompt("我想学习编程");
@@ -128,20 +130,18 @@ export class XiangxinAI {
    * ```
    */
   async checkPrompt(
-    content: string,
-    model: string = 'Xiangxin-Guardrails-Text'
+    content: string
   ): Promise<GuardrailResponse> {
     // 如果content是空字符串，直接返回无风险
     if (!content || !content.trim()) {
       return this.createSafeResponse();
     }
 
-    const requestData: GuardrailRequest = {
-      model,
-      messages: [{ role: 'user', content: content.trim() }]
+    const requestData = {
+      input: content.trim()
     };
 
-    return this.makeRequest('POST', '/guardrails', requestData);
+    return this.makeRequest('POST', '/guardrails/input', requestData);
   }
 
   /**
@@ -215,6 +215,48 @@ export class XiangxinAI {
   }
 
   /**
+   * 检测用户输入和模型输出的安全性 - 上下文感知检测
+   *
+   * 这是护栏的核心功能，能够理解用户输入和模型输出的上下文进行安全检测。
+   * 护栏会基于用户问题的上下文来检测模型输出是否安全合规。
+   *
+   * @param prompt 用户输入的文本内容，用于让护栏理解上下文语意
+   * @param response 模型输出的文本内容，实际检测对象
+   * @returns 基于上下文的检测结果，格式与checkPrompt相同
+   *
+   * @throws {ValidationError} 输入参数无效
+   * @throws {AuthenticationError} 认证失败
+   * @throws {RateLimitError} 超出速率限制
+   * @throws {XiangxinAIError} 其他API错误
+   *
+   * @example
+   * ```typescript
+   * const result = await client.checkResponseCtx(
+   *   "教我做饭",
+   *   "我可以教你做一些简单的家常菜"
+   * );
+   * console.log(result.overall_risk_level); // "无风险"
+   * console.log(result.suggest_action); // "通过"
+   * ```
+   */
+  async checkResponseCtx(
+    prompt: string,
+    response: string
+  ): Promise<GuardrailResponse> {
+    // 如果prompt或response是空字符串，直接返回无风险
+    if ((!prompt || !prompt.trim()) && (!response || !response.trim())) {
+      return this.createSafeResponse();
+    }
+
+    const requestData = {
+      input: prompt ? prompt.trim() : '',
+      output: response ? response.trim() : ''
+    };
+
+    return this.makeRequest('POST', '/guardrails/output', requestData);
+  }
+
+  /**
    * 检查API服务健康状态
    */
   async healthCheck(): Promise<Record<string, any>> {
@@ -234,7 +276,7 @@ export class XiangxinAI {
   private async makeRequest(
     method: 'GET' | 'POST',
     endpoint: string,
-    data?: GuardrailRequest
+    data?: GuardrailRequest | Record<string, any>
   ): Promise<any> {
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
@@ -248,7 +290,7 @@ export class XiangxinAI {
         }
 
         // 如果是护栏检测请求，返回结构化响应
-        if (endpoint === '/guardrails' && typeof response.data === 'object') {
+        if (['/guardrails', '/guardrails/input', '/guardrails/output'].includes(endpoint) && typeof response.data === 'object') {
           return response.data as GuardrailResponse;
         }
 

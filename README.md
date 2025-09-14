@@ -37,10 +37,18 @@ const client = new XiangxinAI({
   apiKey: 'your-api-key'
 });
 
-// 检测单个提示词
+// 检测用户输入
 const result = await client.checkPrompt('用户输入的问题');
 console.log(result.overall_risk_level); // 无风险/低风险/中风险/高风险
 console.log(result.suggest_action);     // 通过/阻断/代答
+
+// 检测输出内容（基于上下文）
+const ctxResult = await client.checkResponseCtx(
+  '教我做饭',
+  '我可以教你做一些简单的家常菜'
+);
+console.log(ctxResult.overall_risk_level); // 无风险
+console.log(ctxResult.suggest_action);     // 通过
 ```
 
 ### 对话上下文检测（推荐）
