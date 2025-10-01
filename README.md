@@ -14,6 +14,7 @@
 - **上下文感知**: 理解完整对话上下文，而非简单的单句检测
 - **智能检测**: 基于LLM的深度语义理解
 - **双重防护**: 合规性检测 + 安全性检测
+- **多模态检测**: 支持图片内容安全检测（2.3.0新增）
 - **实时响应**: 毫秒级检测响应
 - **简单集成**: 易于集成的SDK接口
 
@@ -71,6 +72,42 @@ if (result.suggest_action === '通过') {
 } else if (result.suggest_action === '代答') {
   console.log('建议使用安全回答:', result.suggest_answer);
 }
+```
+
+### 多模态图片检测（2.3.0新增）
+
+象信AI安全护栏2.3.0版本新增了多模态检测功能，支持图片内容安全检测，可以结合提示词文本的语义和图片内容语义分析得出是否安全。
+
+```typescript
+import { XiangxinAI } from 'xiangxinai';
+
+const client = new XiangxinAI({ apiKey: 'your-api-key' });
+
+// 检测单张图片（本地文件）
+const result = await client.checkPromptImage(
+  '这个图片安全吗？',
+  '/path/to/image.jpg'
+);
+console.log(result.overall_risk_level);
+console.log(result.suggest_action);
+
+// 检测单张图片（网络URL）
+const result2 = await client.checkPromptImage(
+  '',  // prompt可以为空
+  'https://example.com/image.jpg'
+);
+
+// 检测多张图片
+const images = [
+  '/path/to/image1.jpg',
+  'https://example.com/image2.jpg',
+  '/path/to/image3.png'
+];
+const result3 = await client.checkPromptImages(
+  '这些图片都安全吗？',
+  images
+);
+console.log(result3.overall_risk_level);
 ```
 
 ## API 参考

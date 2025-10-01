@@ -5,8 +5,8 @@
 export interface Message {
   /** 消息角色: user, system, assistant */
   role: 'user' | 'system' | 'assistant';
-  /** 消息内容 */
-  content: string;
+  /** 消息内容，可以是string或any[]（多模态） */
+  content: string | any[];
 }
 
 export interface GuardrailRequest {

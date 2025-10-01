@@ -2,6 +2,7 @@
  * 象信AI安全护栏客户端
  */
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import * as fs from 'fs';
 import {
   XiangxinAIConfig,
   Message,
@@ -65,7 +66,7 @@ export class XiangxinAI {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'xiangxinai-nodejs/2.0.0'
+        'User-Agent': 'xiangxinai-nodejs/2.3.0'
       }
     });
   }
@@ -254,6 +255,158 @@ export class XiangxinAI {
     };
 
     return this.makeRequest('POST', '/guardrails/output', requestData);
+  }
+
+  /**
+   * 将图片编码为base64格式
+   */
+  private async encodeBase64FromPath(imagePath: string): Promise<string> {
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      // 从URL获取图片
+      const response = await axios.get(imagePath, { responseType: 'arraybuffer' });
+      return Buffer.from(response.data).toString('base64');
+    } else {
+      // 从本地文件读取
+      const imageBuffer = await fs.promises.readFile(imagePath);
+      return imageBuffer.toString('base64');
+    }
+  }
+
+  /**
+   * 检测文本提示词和图片的安全性 - 多模态检测
+   *
+   * 结合文本语义和图片内容进行安全检测。
+   *
+   * @param prompt 文本提示词（可以为空）
+   * @param image 图片文件的本地路径或HTTP(S)链接（不能为空）
+   * @param model 使用的模型名称，默认为多模态模型
+   * @returns 检测结果
+   *
+   * @throws {ValidationError} 输入参数无效
+   * @throws {AuthenticationError} 认证失败
+   * @throws {RateLimitError} 超出速率限制
+   * @throws {XiangxinAIError} 其他API错误
+   *
+   * @example
+   * ```typescript
+   * // 检测本地图片
+   * const result = await client.checkPromptImage("这个图片安全吗？", "/path/to/image.jpg");
+   * // 检测网络图片
+   * const result = await client.checkPromptImage("", "https://example.com/image.jpg");
+   * console.log(result.overall_risk_level);
+   * ```
+   */
+  async checkPromptImage(
+    prompt: string,
+    image: string,
+    model: string = 'Xiangxin-Guardrails-VL'
+  ): Promise<GuardrailResponse> {
+    if (!image) {
+      throw new ValidationError('Image path cannot be empty');
+    }
+
+    // 编码图片
+    let imageBase64: string;
+    try {
+      imageBase64 = await this.encodeBase64FromPath(image);
+    } catch (error: any) {
+      if (error.code === 'ENOENT') {
+        throw new ValidationError(`Image file not found: ${image}`);
+      }
+      throw new XiangxinAIError(`Failed to encode image: ${error.message}`);
+    }
+
+    // 构建消息内容
+    const content: any[] = [];
+    if (prompt && prompt.trim()) {
+      content.push({ type: 'text', text: prompt.trim() });
+    }
+    content.push({
+      type: 'image_url',
+      image_url: { url: `data:image/jpeg;base64,${imageBase64}` }
+    });
+
+    const messages: Message[] = [
+      {
+        role: 'user',
+        content: content
+      }
+    ];
+
+    const requestData: GuardrailRequest = {
+      model,
+      messages
+    };
+
+    return this.makeRequest('POST', '/guardrails', requestData);
+  }
+
+  /**
+   * 检测文本提示词和多张图片的安全性 - 多模态检测
+   *
+   * 结合文本语义和多张图片内容进行安全检测。
+   *
+   * @param prompt 文本提示词（可以为空）
+   * @param images 图片文件的本地路径或HTTP(S)链接列表（不能为空）
+   * @param model 使用的模型名称，默认为多模态模型
+   * @returns 检测结果
+   *
+   * @throws {ValidationError} 输入参数无效
+   * @throws {AuthenticationError} 认证失败
+   * @throws {RateLimitError} 超出速率限制
+   * @throws {XiangxinAIError} 其他API错误
+   *
+   * @example
+   * ```typescript
+   * const images = ["/path/to/image1.jpg", "https://example.com/image2.jpg"];
+   * const result = await client.checkPromptImages("这些图片安全吗？", images);
+   * console.log(result.overall_risk_level);
+   * ```
+   */
+  async checkPromptImages(
+    prompt: string,
+    images: string[],
+    model: string = 'Xiangxin-Guardrails-VL'
+  ): Promise<GuardrailResponse> {
+    if (!images || images.length === 0) {
+      throw new ValidationError('Images list cannot be empty');
+    }
+
+    // 构建消息内容
+    const content: any[] = [];
+    if (prompt && prompt.trim()) {
+      content.push({ type: 'text', text: prompt.trim() });
+    }
+
+    // 编码所有图片
+    for (const imagePath of images) {
+      try {
+        const imageBase64 = await this.encodeBase64FromPath(imagePath);
+        content.push({
+          type: 'image_url',
+          image_url: { url: `data:image/jpeg;base64,${imageBase64}` }
+        });
+      } catch (error: any) {
+        if (error.code === 'ENOENT') {
+          throw new ValidationError(`Image file not found: ${imagePath}`);
+        }
+        throw new XiangxinAIError(`Failed to encode image ${imagePath}: ${error.message}`);
+      }
+    }
+
+    const messages: Message[] = [
+      {
+        role: 'user',
+        content: content
+      }
+    ];
+
+    const requestData: GuardrailRequest = {
+      model,
+      messages
+    };
+
+    return this.makeRequest('POST', '/guardrails', requestData);
   }
 
   /**
