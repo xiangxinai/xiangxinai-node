@@ -13,7 +13,7 @@
 
 - **上下文感知**: 理解完整对话上下文，而非简单的单句检测
 - **智能检测**: 基于LLM的深度语义理解
-- **双重防护**: 合规性检测 + 安全性检测
+- **三重防护**: 合规性检测 + 安全性检测 + 敏感数据防泄漏（2.4.0新增）
 - **多模态检测**: 支持图片内容安全检测（2.3.0新增）
 - **实时响应**: 毫秒级检测响应
 - **简单集成**: 易于集成的SDK接口
@@ -180,10 +180,14 @@ interface GuardrailResponse {
       risk_level: string;        // 无风险/低风险/中风险/高风险
       categories: string[];      // 风险类别
     };
+    data: {                      // 数据防泄漏检测结果（v2.4.0新增）
+      risk_level: string;        // 无风险/低风险/中风险/高风险
+      categories: string[];      // 检测到的敏感数据类型
+    };
   };
   overall_risk_level: string;    // 综合风险等级
   suggest_action: string;        // 通过/阻断/代答
-  suggest_answer?: string;       // 建议回答（如果有）
+  suggest_answer?: string;       // 建议回答（数据防泄漏时包含脱敏后内容）
 }
 ```
 

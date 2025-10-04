@@ -1,6 +1,6 @@
 {
   "name": "xiangxinai",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "象信AI安全护栏 Node.js 客户端 - 基于LLM的上下文感知AI安全护栏",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

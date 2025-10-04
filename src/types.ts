@@ -30,11 +30,20 @@ export interface SecurityResult {
   categories: string[];
 }
 
+export interface DataSecurityResult {
+  /** 风险等级: 无风险, 低风险, 中风险, 高风险 */
+  risk_level: string;
+  /** 敏感数据类别列表 */
+  categories: string[];
+}
+
 export interface GuardrailResult {
   /** 合规检测结果 */
   compliance: ComplianceResult;
   /** 安全检测结果 */
   security: SecurityResult;
+  /** 数据安全检测结果 */
+  data?: DataSecurityResult;
 }
 
 export interface GuardrailResponse {

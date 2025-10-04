@@ -66,7 +66,7 @@ export class XiangxinAI {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'xiangxinai-nodejs/2.3.0'
+        'User-Agent': 'xiangxinai-nodejs/2.4.0'
       }
     });
   }
