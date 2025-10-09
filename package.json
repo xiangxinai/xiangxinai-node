@@ -1,7 +1,7 @@
 {
   "name": "xiangxinai",
   "version": "2.6.1",
-  "description": "An LLM-based context-aware AI safety guardrail capable of understanding conversation context for security detection.",
+  "description": "An LLM-based context-aware AI guardrail capable of understanding conversation context for security, safety and data leakage detection.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -45,11 +45,10 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/xiangxinai/xiangxin-guardrails.git",
-    "directory": "client/xiangxinai-nodejs"
+    "url": "https://github.com/xiangxinai/xiangxinai-node.git"
   },
   "bugs": {
-    "url": "https://github.com/xiangxinai/xiangxin-guardrails/issues"
+    "url": "https://github.com/xiangxinai/xiangxinai-node/issues"
   },
   "homepage": "https://xiangxinai.cn",
   "engines": {
