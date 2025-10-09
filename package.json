@@ -1,7 +1,7 @@
 {
   "name": "xiangxinai",
-  "version": "2.4.0",
-  "description": "象信AI安全护栏 Node.js 客户端 - 基于LLM的上下文感知AI安全护栏",
+  "version": "2.6.1",
+  "description": "An LLM-based context-aware AI safety guardrail capable of understanding conversation context for security detection.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

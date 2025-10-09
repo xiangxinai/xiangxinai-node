@@ -1,158 +1,224 @@
-# 象信AI安全护栏 Node.js SDK
+# Xiangxin AI Guardrails Node.js SDK
 
 [![npm version](https://badge.fury.io/js/xiangxinai.svg)](https://badge.fury.io/js/xiangxinai)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-象信AI安全护栏 Node.js 客户端 - 基于LLM的上下文感知AI安全护栏。
+Xiangxin AI Guardrails Node.js Client - An LLM-based context-aware AI safety guardrail capable of understanding conversation context for security detection.
 
-## 概述
+## Features
 
-象信AI安全护栏是一个基于大语言模型的上下文感知AI安全护栏系统，能够理解对话上下文进行智能安全检测。不同于传统的关键词匹配，我们的护栏能够理解语言的深层含义和对话的上下文关系。
+- 🧠 **Context-Aware** - LLM-based conversation understanding, not just simple batch detection
+- 🔍 **Prompt Attack Detection** - Identifies malicious prompt injection and jailbreak attacks
+- 📋 **Content Compliance Detection** - Meets basic security requirements for generative AI services
+- 🔐 **Sensitive Data Leakage Prevention** - Detects and prevents leakage of personal/corporate sensitive data
+- 🧩 **User-Level Ban Policies** - Supports risk identification and ban policies at user granularity
+- 🖼️ **Multimodal Detection** - Supports image content safety detection
+- 🛠️ **Easy Integration** - Compatible with OpenAI API format, one-line code integration
+- ⚡ **OpenAI-Style API** - Familiar interface design, quick to get started
+- 🚀 **Sync/Async Support** - Supports both synchronous and asynchronous calls to meet different scenario needs
 
-## 核心特性
-
-- **上下文感知**: 理解完整对话上下文，而非简单的单句检测
-- **智能检测**: 基于LLM的深度语义理解
-- **三重防护**: 合规性检测 + 安全性检测 + 敏感数据防泄漏（2.4.0新增）
-- **多模态检测**: 支持图片内容安全检测（2.3.0新增）
-- **实时响应**: 毫秒级检测响应
-- **简单集成**: 易于集成的SDK接口
-
-## 安装
+## Installation
 
 ```bash
 npm install xiangxinai
-# 或
+# or
 yarn add xiangxinai
 ```
 
-## 快速开始
+## Quick Start
 
-### 基本用法
+### Basic Usage
 
 ```typescript
 import { XiangxinAI } from 'xiangxinai';
 
-// 初始化客户端
+// Initialize client
 const client = new XiangxinAI({
   apiKey: 'your-api-key'
 });
 
-// 检测用户输入
-const result = await client.checkPrompt('用户输入的问题');
-console.log(result.overall_risk_level); // 无风险/低风险/中风险/高风险
-console.log(result.suggest_action);     // 通过/阻断/代答
+// Detect user input
+const result = await client.checkPrompt('User input question');
+console.log(result.overall_risk_level); // no_risk/low_risk/medium_risk/high_risk
+console.log(result.suggest_action);     // pass/reject/replace
 
-// 检测输出内容（基于上下文）
+// Detect user input with optional user ID
+const result2 = await client.checkPrompt('User input question', 'user-123');
+
+// Detect output content (context-based)
 const ctxResult = await client.checkResponseCtx(
-  '教我做饭',
-  '我可以教你做一些简单的家常菜'
+  'Teach me how to cook',
+  'I can teach you some simple home-style dishes'
 );
-console.log(ctxResult.overall_risk_level); // 无风险
-console.log(ctxResult.suggest_action);     // 通过
+console.log(ctxResult.overall_risk_level); // No Risk
+console.log(ctxResult.suggest_action);     // Pass
+
+// Detect output content with optional user ID
+const ctxResult2 = await client.checkResponseCtx(
+  'Teach me how to cook',
+  'I can teach you some simple home-style dishes',
+  'user-123'
+);
 ```
 
-### 对话上下文检测（推荐）
+### Conversation Context Detection (Recommended)
 
 ```typescript
-// 检测完整对话上下文 - 核心功能
+// Detect complete conversation context - Core functionality
 const messages = [
-  { role: 'user', content: '用户的问题' },
-  { role: 'assistant', content: 'AI助手的回答' },
-  { role: 'user', content: '用户的后续问题' }
+  { role: 'user', content: 'User question' },
+  { role: 'assistant', content: 'AI assistant response' },
+  { role: 'user', content: 'User follow-up question' }
 ];
 
 const result = await client.checkConversation(messages);
 
-// 检查检测结果
-if (result.suggest_action === '通过') {
-  console.log('对话安全，可以继续');
-} else if (result.suggest_action === '阻断') {
-  console.log('对话存在风险，建议阻断');
-} else if (result.suggest_action === '代答') {
-  console.log('建议使用安全回答:', result.suggest_answer);
+// Check detection results
+if (result.suggest_action === 'pass') {
+  console.log('Conversation safe, can continue');
+} else if (result.suggest_action === 'reject') {
+  console.log('Conversation has risks, recommend reject');
+} else if (result.suggest_action === 'replace') {
+  console.log('Recommend using safe answer:', result.suggest_answer);
 }
+
+// Pass user ID for tracking (optional)
+const result2 = await client.checkConversation(messages, 'Xiangxin-Guardrails-Text', 'user-123');
 ```
 
-### 多模态图片检测（2.3.0新增）
+### Multimodal Image Detection (New in 2.3.0)
 
-象信AI安全护栏2.3.0版本新增了多模态检测功能，支持图片内容安全检测，可以结合提示词文本的语义和图片内容语义分析得出是否安全。
+Xiangxin AI Safety Guardrails version 2.3.0 adds multimodal detection functionality, supporting image content safety detection, combining prompt text semantics and image content semantics analysis to determine safety.
 
 ```typescript
 import { XiangxinAI } from 'xiangxinai';
 
 const client = new XiangxinAI({ apiKey: 'your-api-key' });
 
-// 检测单张图片（本地文件）
+// Detect single image (local file)
 const result = await client.checkPromptImage(
-  '这个图片安全吗？',
+  'Is this image safe?',
   '/path/to/image.jpg'
 );
 console.log(result.overall_risk_level);
 console.log(result.suggest_action);
 
-// 检测单张图片（网络URL）
+// Detect single image (network URL)
 const result2 = await client.checkPromptImage(
-  '',  // prompt可以为空
+  '',  // prompt can be empty
   'https://example.com/image.jpg'
 );
 
-// 检测多张图片
+// Detect multiple images
 const images = [
   '/path/to/image1.jpg',
   'https://example.com/image2.jpg',
   '/path/to/image3.png'
 ];
 const result3 = await client.checkPromptImages(
-  '这些图片都安全吗？',
+  'Are all these images safe?',
   images
 );
 console.log(result3.overall_risk_level);
+
+// Pass user ID for tracking (optional)
+const result4 = await client.checkPromptImage(
+  'Is this image safe?',
+  '/path/to/image.jpg',
+  'Xiangxin-Guardrails-VL',
+  'user-123'
+);
+
+const result5 = await client.checkPromptImages(
+  'Are all these images safe?',
+  images,
+  'Xiangxin-Guardrails-VL',
+  'user-123'
+);
 ```
 
-## API 参考
+## API Reference
 
 ### XiangxinAI
 
-#### 构造函数
+#### Constructor
 
 ```typescript
 new XiangxinAI(config: XiangxinAIConfig)
 ```
 
-**参数:**
-- `config.apiKey` (string): API密钥
-- `config.baseUrl` (string, 可选): API基础URL，默认为云端服务
-- `config.timeout` (number, 可选): 请求超时时间（毫秒），默认30000
-- `config.maxRetries` (number, 可选): 最大重试次数，默认3
+**Parameters:**
+- `config.apiKey` (string): API key
+- `config.baseUrl` (string, optional): API base URL, defaults to cloud service
+- `config.timeout` (number, optional): Request timeout (milliseconds), default 30000
+- `config.maxRetries` (number, optional): Maximum retry attempts, default 3
 
-#### 方法
+#### Methods
 
-##### checkPrompt(content, model?)
+##### checkPrompt(content, userId?)
 
-检测单个提示词的安全性。
+Detect safety of a single prompt.
 
 ```typescript
 await client.checkPrompt(
-  content: string,          // 要检测的内容
-  model?: string           // 模型名称，默认 'Xiangxin-Guardrails-Text'
+  content: string,          // Content to detect
+  userId?: string          // Optional, tenant AI application user ID for user-level risk control and audit tracking
 ): Promise<GuardrailResponse>
 ```
 
-##### checkConversation(messages, model?)
+##### checkConversation(messages, model?, userId?)
 
-检测对话上下文的安全性（推荐使用）。
+Detect safety of conversation context (recommended).
 
 ```typescript
 await client.checkConversation(
-  messages: Array<{role: string, content: string}>,  // 对话消息列表
-  model?: string                                     // 模型名称
+  messages: Array<{role: string, content: string}>,  // Conversation message list
+  model?: string,                                    // Model name
+  userId?: string                                    // Optional, tenant AI application user ID
+): Promise<GuardrailResponse>
+```
+
+##### checkResponseCtx(prompt, response, userId?)
+
+Detect safety of user input and model output - context-aware detection.
+
+```typescript
+await client.checkResponseCtx(
+  prompt: string,           // User input text content
+  response: string,         // Model output text content
+  userId?: string          // Optional, tenant AI application user ID
+): Promise<GuardrailResponse>
+```
+
+##### checkPromptImage(prompt, image, model?, userId?)
+
+Detect safety of text prompt and image - multimodal detection.
+
+```typescript
+await client.checkPromptImage(
+  prompt: string,           // Text prompt (can be empty)
+  image: string,           // Local file path or HTTP(S) link of image
+  model?: string,          // Model name, default 'Xiangxin-Guardrails-VL'
+  userId?: string          // Optional, tenant AI application user ID
+): Promise<GuardrailResponse>
+```
+
+##### checkPromptImages(prompt, images, model?, userId?)
+
+Detect safety of text prompt and multiple images - multimodal detection.
+
+```typescript
+await client.checkPromptImages(
+  prompt: string,           // Text prompt (can be empty)
+  images: string[],        // List of local file paths or HTTP(S) links of images
+  model?: string,          // Model name, default 'Xiangxin-Guardrails-VL'
+  userId?: string          // Optional, tenant AI application user ID
 ): Promise<GuardrailResponse>
 ```
 
 ##### healthCheck()
 
-检查API服务健康状态。
+Check API service health status.
 
 ```typescript
 await client.healthCheck(): Promise<Record<string, any>>
@@ -160,56 +226,57 @@ await client.healthCheck(): Promise<Record<string, any>>
 
 ##### getModels()
 
-获取可用模型列表。
+Get available model list.
 
 ```typescript
 await client.getModels(): Promise<Record<string, any>>
 ```
 
-### 响应格式
+### Response Format
 
 ```typescript
 interface GuardrailResponse {
-  id: string;                    // 请求唯一标识
+  id: string;                    // Request unique identifier
   result: {
-    compliance: {                // 合规检测结果
-      risk_level: string;        // 无风险/低风险/中风险/高风险
-      categories: string[];      // 风险类别
+    compliance: {                // Compliance detection results
+      risk_level: string;        // no_risk/low_risk/medium_risk/high_risk
+      categories: string[];      // Risk categories
     };
-    security: {                  // 安全检测结果
-      risk_level: string;        // 无风险/低风险/中风险/高风险
-      categories: string[];      // 风险类别
+    security: {                  // Security detection results
+      risk_level: string;        // no_risk/low_risk/medium_risk/high_risk
+      categories: string[];      // Risk categories
     };
-    data: {                      // 数据防泄漏检测结果（v2.4.0新增）
-      risk_level: string;        // 无风险/低风险/中风险/高风险
-      categories: string[];      // 检测到的敏感数据类型
+    data: {                      // Data leakage prevention detection results (new in v2.4.0)
+      risk_level: string;        // no_risk/low_risk/medium_risk/high_risk
+      categories: string[];      // Detected sensitive data types
     };
   };
-  overall_risk_level: string;    // 综合风险等级
-  suggest_action: string;        // 通过/阻断/代答
-  suggest_answer?: string;       // 建议回答（数据防泄漏时包含脱敏后内容）
+  overall_risk_level: string;    // Comprehensive risk level
+  suggest_action: string;        // pass/reject/replace
+  suggest_answer?: string;       // Suggested answer (includes desensitized content during data leakage prevention)
+  score?: number;                // Detection confidence score (new in v2.4.1)
 }
 ```
 
-### 辅助方法
+### Helper Methods
 
 ```typescript
 import { GuardrailResponseHelper } from 'xiangxinai';
 
-// 判断是否安全
+// Check if safe
 GuardrailResponseHelper.isSafe(response);        // boolean
 
-// 判断是否被阻断
+// Check if blocked
 GuardrailResponseHelper.isBlocked(response);     // boolean
 
-// 判断是否有代答
+// Check if has replace answer
 GuardrailResponseHelper.hasSubstitute(response); // boolean
 
-// 获取所有风险类别
+// Get all risk categories
 GuardrailResponseHelper.getAllCategories(response); // string[]
 ```
 
-## 错误处理
+## Error Handling
 
 ```typescript
 import { 
@@ -224,58 +291,58 @@ try {
   console.log(result);
 } catch (error) {
   if (error instanceof AuthenticationError) {
-    console.error('认证失败，请检查API密钥');
+    console.error('Authentication failed, please check API key');
   } else if (error instanceof RateLimitError) {
-    console.error('请求频率过高，请稍后重试');
+    console.error('Request rate too high, please try again later');
   } else if (error instanceof ValidationError) {
-    console.error('输入参数无效:', error.message);
+    console.error('Invalid input parameters:', error.message);
   } else if (error instanceof XiangxinAIError) {
-    console.error('API错误:', error.message);
+    console.error('API error:', error.message);
   } else {
-    console.error('未知错误:', error);
+    console.error('Unknown error:', error);
   }
 }
 ```
 
-## 使用场景
+## Use Cases
 
-### 1. 内容审核
+### 1. Content Moderation
 
 ```typescript
-// 用户生成内容检测
-const userContent = "用户发布的内容...";
+// User-generated content detection
+const userContent = "User posted content...";
 const result = await client.checkPrompt(userContent);
 
 if (!GuardrailResponseHelper.isSafe(result)) {
-  // 内容不安全，执行相应处理
-  console.log('内容包含风险:', GuardrailResponseHelper.getAllCategories(result));
+  // Content unsafe, perform appropriate handling
+  console.log('Content contains risks:', GuardrailResponseHelper.getAllCategories(result));
 }
 ```
 
-### 2. 对话系统防护
+### 2. Dialogue System Protection
 
 ```typescript
-// AI对话系统中的安全检测
+// Safety detection in AI dialogue systems
 const conversation = [
-  { role: 'user', content: '用户问题' },
-  { role: 'assistant', content: '准备发送给用户的回答' }
+  { role: 'user', content: 'User question' },
+  { role: 'assistant', content: 'Response prepared to send to user' }
 ];
 
 const result = await client.checkConversation(conversation);
 
-if (result.suggest_action === '代答' && result.suggest_answer) {
-  // 使用安全的代答内容
+if (result.suggest_action === 'replace' && result.suggest_answer) {
+  // Use safe replace answer
   return result.suggest_answer;
-} else if (result.suggest_action === '阻断') {
-  // 阻断不安全的对话
-  return '抱歉，我无法回答这个问题';
+} else if (result.suggest_action === 'reject') {
+  // Block unsafe conversation
+  return 'Sorry, I cannot answer this question';
 }
 ```
 
-### 3. 实时流式检测
+### 3. Real-time Streaming Detection
 
 ```typescript
-// 在流式对话中进行实时检测
+// Real-time detection in streaming conversations
 async function streamConversationCheck(messages) {
   try {
     const result = await client.checkConversation(messages);
@@ -286,29 +353,29 @@ async function streamConversationCheck(messages) {
       riskCategories: GuardrailResponseHelper.getAllCategories(result)
     };
   } catch (error) {
-    console.error('安全检测失败:', error);
+    console.error('Safety detection failed:', error);
     return { canContinue: false };
   }
 }
 ```
 
-## 最佳实践
+## Best Practices
 
-1. **使用对话上下文检测**: 推荐使用 `checkConversation` 而不是 `checkPrompt`，因为上下文感知能提供更准确的检测结果。
+1. **Use Conversation Context Detection**: Recommend using `checkConversation` instead of `checkPrompt`, as context awareness provides more accurate detection results.
 
-2. **合理处理错误**: 实现适当的错误处理和重试机制。
+2. **Proper Error Handling**: Implement appropriate error handling and retry mechanisms.
 
-3. **缓存策略**: 对于相同的输入，可以考虑缓存检测结果。
+3. **Caching Strategy**: Consider caching detection results for identical inputs.
 
-4. **监控和日志**: 记录检测结果用于分析和优化。
+4. **Monitoring and Logging**: Record detection results for analysis and optimization.
 
-## 许可证
+## License
 
 Apache 2.0
 
-## 技术支持
+## Technical Support
 
-- 官网: https://xiangxinai.cn
-- 文档: https://docs.xiangxinai.cn  
-- 问题反馈: https://github.com/xiangxinai/xiangxin-guardrails/issues
-- 邮箱: wanglei@xiangxinai.cn
+- Official Website: https://xiangxinai.cn
+- Documentation: https://docs.xiangxinai.cn  
+- Issue Reporting: https://github.com/xiangxinai/xiangxin-guardrails/issues
+- Email: wanglei@xiangxinai.cn

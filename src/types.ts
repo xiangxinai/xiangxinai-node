@@ -1,71 +1,73 @@
 /**
- * 数据模型定义
+ * Data model definition
  */
 
 export interface Message {
-  /** 消息角色: user, system, assistant */
+  /** Message role: user, system, assistant */
   role: 'user' | 'system' | 'assistant';
-  /** 消息内容，可以是string或any[]（多模态） */
+  /** Message content, can be string or any[] (multi-modal) */
   content: string | any[];
 }
 
 export interface GuardrailRequest {
-  /** 模型名称 */
+  /** Model name */
   model: string;
-  /** 消息列表 */
+  /** Message list */
   messages: Message[];
 }
 
 export interface ComplianceResult {
-  /** 风险等级: 无风险, 低风险, 中风险, 高风险 */
+  /** Risk level: no_risk, low_risk, medium_risk, high_risk */
   risk_level: string;
-  /** 风险类别列表 */
+  /** Risk category list */
   categories: string[];
 }
 
 export interface SecurityResult {
-  /** 风险等级: 无风险, 低风险, 中风险, 高风险 */
+  /** Risk level: no_risk, low_risk, medium_risk, high_risk */
   risk_level: string;
-  /** 风险类别列表 */
+  /** Risk category list */
   categories: string[];
 }
 
 export interface DataSecurityResult {
-  /** 风险等级: 无风险, 低风险, 中风险, 高风险 */
+  /** Risk level: no_risk, low_risk, medium_risk, high_risk */
   risk_level: string;
-  /** 敏感数据类别列表 */
+  /** Sensitive data category list */
   categories: string[];
 }
 
 export interface GuardrailResult {
-  /** 合规检测结果 */
+  /** Compliance detection result */
   compliance: ComplianceResult;
-  /** 安全检测结果 */
+  /** Security detection result */
   security: SecurityResult;
-  /** 数据安全检测结果 */
+  /** Data security detection result */
   data?: DataSecurityResult;
 }
 
 export interface GuardrailResponse {
-  /** 请求唯一标识 */
+  /** Request unique identifier */
   id: string;
-  /** 检测结果 */
+  /** Detection result */
   result: GuardrailResult;
-  /** 综合风险等级: 无风险, 低风险, 中风险, 高风险 */
+  /** Comprehensive risk level: no_risk, low_risk, medium_risk, high_risk */
   overall_risk_level: string;
-  /** 建议动作: 通过, 阻断, 代答 */
+  /** Suggest action: pass, reject, replace */
   suggest_action: string;
-  /** 建议回答内容 */
+  /** Suggest answer content */
   suggest_answer?: string;
+  /** Detection confidence score */
+  score?: number;
 }
 
 export interface XiangxinAIConfig {
-  /** API密钥 */
+  /** API key */
   apiKey: string;
-  /** API基础URL */
+  /** API base URL */
   baseUrl?: string;
-  /** 请求超时时间（毫秒） */
+  /** Request timeout (milliseconds) */
   timeout?: number;
-  /** 最大重试次数 */
+  /** Maximum number of retries */
   maxRetries?: number;
 }

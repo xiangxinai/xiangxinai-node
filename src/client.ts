@@ -1,5 +1,5 @@
 /**
- * 象信AI安全护栏客户端
+ * Xiangxin AI Guardrails Client
  */
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as fs from 'fs';
@@ -10,6 +10,7 @@ import {
   GuardrailResponse,
   ComplianceResult,
   SecurityResult,
+  DataSecurityResult,
   GuardrailResult
 } from './types';
 import {
@@ -21,29 +22,30 @@ import {
 } from './exceptions';
 
 /**
- * 象信AI安全护栏客户端 - 基于LLM的上下文感知AI安全护栏
+ * Xiangxin AI Guardrails Client - Context-aware AI Guardrails based on LLM
  * 
- * 这个客户端提供了与象信AI安全护栏API交互的简单接口。
- * 护栏采用上下文感知技术，能够理解对话上下文进行安全检测。
+ * This client provides a simple interface for interacting with the Xiangxin AI Guardrails API.
+ * The guardrails use context-aware technology to understand the conversation context and perform security checks.
  * 
  * @example
+ * 
  * ```typescript
  * const client = new XiangxinAI({ apiKey: "your-api-key" });
  * 
- * // 检测用户输入
- * const result = await client.checkPrompt("用户问题");
+ * // Detect user input
+ * const result = await client.checkPrompt("User question");
  *
- * // 检测输出内容（基于上下文）
- * const result = await client.checkResponseCtx("用户问题", "助手回答");
+ * // Detect output content (based on context)
+ * const result = await client.checkResponseCtx("User question", "Assistant answer");
  *
- * // 检测对话上下文
+ * // Detect conversation context
  * const messages = [
- *   { role: "user", content: "问题" },
- *   { role: "assistant", content: "回答" }
+ *   { role: "user", content: "Question" },
+ *   { role: "assistant", content: "Answer" }
  * ];
  * const result = await client.checkConversation(messages);
- * console.log(result.overall_risk_level); // "高风险/中风险/低风险/无风险"
- * console.log(result.suggest_action); // "通过/阻断/代答"
+ * console.log(result.overall_risk_level); // "high_risk/medium_risk/low_risk/no_risk"s
+ * console.log(result.suggest_action); // "pass/reject/replace"
  * ```
  */
 export class XiangxinAI {
@@ -66,29 +68,29 @@ export class XiangxinAI {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'xiangxinai-nodejs/2.4.0'
+        'User-Agent': 'xiangxinai-nodejs/2.6.1'
       }
     });
   }
 
   /**
-   * 创建无风险的默认响应
+   * Create a default response with no risk
    */
   private createSafeResponse(): GuardrailResponse {
     return {
       id: 'guardrails-safe-default',
       result: {
         compliance: {
-          risk_level: '无风险',
+          risk_level: 'no_risk',
           categories: []
         },
         security: {
-          risk_level: '无风险',
+          risk_level: 'no_risk',
           categories: []
         }
       },
-      overall_risk_level: '无风险',
-      suggest_action: '通过',
+      overall_risk_level: 'no_risk',
+      suggest_action: 'pass',
       suggest_answer: undefined
     };
   }
@@ -96,88 +98,102 @@ export class XiangxinAI {
   /**
    * 检测用户输入的安全性
    *
-   * @param content 要检测的用户输入内容
+   * @param content The user input content to be detected
+   * @param userId 可选，租户AI应用的用户ID，用于用户级别的风险控制和审计追踪
    * @returns 检测结果，格式为：
    * ```
    * {
    *   "id": "guardrails-xxx",
    *   "result": {
    *     "compliance": {
-   *       "risk_level": "高风险/中风险/低风险/无风险",
-   *       "categories": ["暴力犯罪", "敏感政治话题"]
+   *       "risk_level": "high_risk/medium_risk/low_risk/no_risk",
+   *       "categories": ["violent crime", "sensitive political topics"]
    *     },
    *     "security": {
-   *       "risk_level": "高风险/中风险/低风险/无风险",
-   *       "categories": ["提示词攻击"]
+   *       "risk_level": "high_risk/medium_risk/low_risk/no_risk",
+   *       "categories": ["prompt injection"]
    *     }
    *   },
-   *   "overall_risk_level": "高风险/中风险/低风险/无风险",
-   *   "suggest_action": "通过/阻断/代答",
-   *   "suggest_answer": "建议回答内容"
+   *   "overall_risk_level": "high_risk/medium_risk/low_risk/no_risk",
+   *   "suggest_action": "pass/reject/replace",
+   *   "suggest_answer": "Suggested answer content"
    * }
    * ```
    *
-   * @throws {ValidationError} 输入参数无效
-   * @throws {AuthenticationError} 认证失败
-   * @throws {RateLimitError} 超出速率限制
-   * @throws {XiangxinAIError} 其他API错误
+   * @throws {ValidationError} Invalid input parameters
+   * @throws {AuthenticationError} Authentication failed
+   * @throws {RateLimitError} Exceeded rate limit
+   * @throws {XiangxinAIError} Other API errors
    *
    * @example
    * ```typescript
-   * const result = await client.checkPrompt("我想学习编程");
-   * console.log(result.overall_risk_level); // "无风险"
-   * console.log(result.suggest_action); // "通过"
-   * console.log(result.result.compliance.risk_level); // "无风险"
+   * const result = await client.checkPrompt("I want to learn programming");
+   * console.log(result.overall_risk_level); // "no_risk"
+   * console.log(result.suggest_action); // "pass"
+   * console.log(result.result.compliance.risk_level); // "no_risk"
+   *
+   * // Pass user ID for tracking
+   * const result = await client.checkPrompt("我想学习编程", "user-123");
    * ```
    */
   async checkPrompt(
-    content: string
+    content: string,
+    userId?: string
   ): Promise<GuardrailResponse> {
-    // 如果content是空字符串，直接返回无风险
+    // If content is an empty string, return a safe response
     if (!content || !content.trim()) {
       return this.createSafeResponse();
     }
 
-    const requestData = {
+    const requestData: any = {
       input: content.trim()
     };
+
+    if (userId) {
+      requestData.xxai_app_user_id = userId;
+    }
 
     return this.makeRequest('POST', '/guardrails/input', requestData);
   }
 
   /**
-   * 检测对话上下文的安全性 - 上下文感知检测
-   * 
-   * 这是护栏的核心功能，能够理解完整的对话上下文进行安全检测。
-   * 不是分别检测每条消息，而是分析整个对话的安全性。
-   * 
-   * @param messages 对话消息列表，包含用户和助手的完整对话，每个消息包含role('user'或'assistant')和content
-   * @param model 使用的模型名称
-   * @returns 基于对话上下文的检测结果，格式与checkPrompt相同
-   * 
+   * Detect conversation context security - context-aware detection
+   *
+   * This is the core function of the guardrails, which can understand the complete conversation context for security detection.
+   * Instead of detecting each message separately, it analyzes the security of the entire conversation.
+   *
+   * @param messages Conversation message list, containing the complete conversation between user and assistant, each message contains role('user' or 'assistant') and content
+   * @param model The model name used
+   * @param userId Optional, the user ID of the tenant AI application, used for user-level risk control and audit tracking
+   * @returns The detection result based on the conversation context, the format is the same as checkPrompt
+   *
    * @example
    * ```typescript
-   * // 检测用户问题和助手回答的对话安全性
+   * // Detect the security of the conversation between user and assistant
    * const messages = [
-   *   { role: "user", content: "用户问题" },
-   *   { role: "assistant", content: "助手回答" }
+   *   { role: "user", content: "User question" },
+   *   { role: "assistant", content: "Assistant answer" }
    * ];
    * const result = await client.checkConversation(messages);
-   * console.log(result.overall_risk_level); // "无风险"
-   * console.log(result.suggest_action); // 基于对话上下文的建议
+   * console.log(result.overall_risk_level); // "no_risk"
+   * console.log(result.suggest_action); // The suggestion based on the conversation context
+   *
+   * // Pass user ID for tracking
+   * const result = await client.checkConversation(messages, 'Xiangxin-Guardrails-Text', "user-123");
    * ```
    */
   async checkConversation(
     messages: Array<{ role: string; content: string }>,
-    model: string = 'Xiangxin-Guardrails-Text'
+    model: string = 'Xiangxin-Guardrails-Text',
+    userId?: string
   ): Promise<GuardrailResponse> {
     if (!messages || messages.length === 0) {
       throw new ValidationError('Messages cannot be empty');
     }
 
-    // 验证消息格式
+    // Validate message format
     const validatedMessages: Message[] = [];
-    let allEmpty = true; // 标记是否所有content都为空
+    let allEmpty = true; // Mark whether all content is empty
 
     for (const msg of messages) {
       if (typeof msg !== 'object' || !msg.role || typeof msg.content !== 'string') {
@@ -189,123 +205,148 @@ export class XiangxinAI {
       }
 
       const content = msg.content;
-      // 检查是否有非空content
+      // Check if there is non-empty content
       if (content && content.trim()) {
         allEmpty = false;
-        // 只添加非空消息到validatedMessages
+        // Only add non-empty messages to validatedMessages
         validatedMessages.push({ role: msg.role as 'user' | 'system' | 'assistant', content });
       }
     }
 
-    // 如果所有messages的content都是空的，直接返回无风险
+    // If all messages' content are empty, return a safe response
     if (allEmpty) {
       return this.createSafeResponse();
     }
 
-    // 确保至少有一条消息
+    // Ensure at least one message
     if (validatedMessages.length === 0) {
       return this.createSafeResponse();
     }
 
-    const requestData: GuardrailRequest = {
+    const requestData: any = {
       model,
       messages: validatedMessages
     };
+
+    if (userId) {
+      if (!requestData.extra_body) {
+        requestData.extra_body = {};
+      }
+      requestData.extra_body.xxai_app_user_id = userId;
+    }
 
     return this.makeRequest('POST', '/guardrails', requestData);
   }
 
   /**
-   * 检测用户输入和模型输出的安全性 - 上下文感知检测
+   * Detect the security of user input and model output - context-aware detection
    *
-   * 这是护栏的核心功能，能够理解用户输入和模型输出的上下文进行安全检测。
-   * 护栏会基于用户问题的上下文来检测模型输出是否安全合规。
+   * This is the core function of the guardrails, which can understand the complete conversation context for security detection.
+   * The guardrails will detect whether the model output is safe and compliant based on the context of the user question.
    *
-   * @param prompt 用户输入的文本内容，用于让护栏理解上下文语意
-   * @param response 模型输出的文本内容，实际检测对象
-   * @returns 基于上下文的检测结果，格式与checkPrompt相同
+   * @param prompt The user input text content, used to make the guardrails understand the context semantic
+   * @param response The model output text content, the actual detection object
+   * @param userId Optional, the user ID of the tenant AI application, used for user-level risk control and audit tracking
+   * @returns The detection result based on the context, the format is the same as checkPrompt
    *
-   * @throws {ValidationError} 输入参数无效
-   * @throws {AuthenticationError} 认证失败
-   * @throws {RateLimitError} 超出速率限制
-   * @throws {XiangxinAIError} 其他API错误
+   * @throws {ValidationError} Invalid input parameters
+   * @throws {AuthenticationError} Authentication failed
+   * @throws {RateLimitError} Exceeded rate limit
+   * @throws {XiangxinAIError} Other API errors
    *
    * @example
    * ```typescript
    * const result = await client.checkResponseCtx(
-   *   "教我做饭",
-   *   "我可以教你做一些简单的家常菜"
+   *   "Cooking",
+   *   "I can teach you how to cook simple home-cooked meals"
    * );
-   * console.log(result.overall_risk_level); // "无风险"
-   * console.log(result.suggest_action); // "通过"
+   * console.log(result.overall_risk_level); // "no_risk"
+   * console.log(result.suggest_action); // "pass"
+   *
+   * // 传递用户ID用于追踪
+   * const result = await client.checkResponseCtx(
+   *   "Cooking",
+   *   "I can teach you how to cook simple home-cooked meals",
+   *   "user-123"
+   * );
    * ```
    */
   async checkResponseCtx(
     prompt: string,
-    response: string
+    response: string,
+    userId?: string
   ): Promise<GuardrailResponse> {
-    // 如果prompt或response是空字符串，直接返回无风险
+    // If prompt or response is an empty string, return a safe response
     if ((!prompt || !prompt.trim()) && (!response || !response.trim())) {
       return this.createSafeResponse();
     }
 
-    const requestData = {
+    const requestData: any = {
       input: prompt ? prompt.trim() : '',
       output: response ? response.trim() : ''
     };
+
+    if (userId) {
+      requestData.xxai_app_user_id = userId;
+    }
 
     return this.makeRequest('POST', '/guardrails/output', requestData);
   }
 
   /**
-   * 将图片编码为base64格式
+   * Encode the image to base64 format
    */
   private async encodeBase64FromPath(imagePath: string): Promise<string> {
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      // 从URL获取图片
+      // Get the image from the URL
       const response = await axios.get(imagePath, { responseType: 'arraybuffer' });
       return Buffer.from(response.data).toString('base64');
     } else {
-      // 从本地文件读取
+      // Read the image from the local file
       const imageBuffer = await fs.promises.readFile(imagePath);
       return imageBuffer.toString('base64');
     }
   }
 
   /**
-   * 检测文本提示词和图片的安全性 - 多模态检测
+   * Detect the security of text prompt and image - multi-modal detection
    *
-   * 结合文本语义和图片内容进行安全检测。
+   * Combine the text semantic and image content for security detection.
    *
-   * @param prompt 文本提示词（可以为空）
-   * @param image 图片文件的本地路径或HTTP(S)链接（不能为空）
-   * @param model 使用的模型名称，默认为多模态模型
-   * @returns 检测结果
+   * @param prompt Text prompt (can be empty)
+   * @param image The local path or HTTP(S) link of the image file (cannot be empty)
+   * @param model The model name used, default is the multi-modal model
+   * @param userId Optional, the user ID of the tenant AI application, used for user-level risk control and audit tracking
+   * @returns The detection result
    *
-   * @throws {ValidationError} 输入参数无效
-   * @throws {AuthenticationError} 认证失败
-   * @throws {RateLimitError} 超出速率限制
-   * @throws {XiangxinAIError} 其他API错误
+   * @throws {ValidationError} Invalid input parameters
+   * @throws {AuthenticationError} Authentication failed
+   * @throws {RateLimitError} Exceeded rate limit
+   * @throws {XiangxinAIError} Other API errors
    *
    * @example
    * ```typescript
-   * // 检测本地图片
-   * const result = await client.checkPromptImage("这个图片安全吗？", "/path/to/image.jpg");
-   * // 检测网络图片
+   * // Detect the local image
+   * const result = await client.checkPromptImage("Is this image safe?", "/path/to/image.jpg");
+   * // Detect the network image
    * const result = await client.checkPromptImage("", "https://example.com/image.jpg");
    * console.log(result.overall_risk_level);
+   *
+   * // Pass user ID for tracking
+   * const result = await client.checkPromptImage("这个图片安全吗？", "/path/to/image.jpg", 'Xiangxin-Guardrails-VL', "user-123");
    * ```
    */
   async checkPromptImage(
     prompt: string,
     image: string,
-    model: string = 'Xiangxin-Guardrails-VL'
+    model: string = 'Xiangxin-Guardrails-VL',
+    userId?: string
   ): Promise<GuardrailResponse> {
     if (!image) {
       throw new ValidationError('Image path cannot be empty');
     }
 
-    // 编码图片
+    // Encode the image
     let imageBase64: string;
     try {
       imageBase64 = await this.encodeBase64FromPath(image);
@@ -316,7 +357,7 @@ export class XiangxinAI {
       throw new XiangxinAIError(`Failed to encode image: ${error.message}`);
     }
 
-    // 构建消息内容
+    // Build the message content
     const content: any[] = [];
     if (prompt && prompt.trim()) {
       content.push({ type: 'text', text: prompt.trim() });
@@ -333,52 +374,64 @@ export class XiangxinAI {
       }
     ];
 
-    const requestData: GuardrailRequest = {
+    const requestData: any = {
       model,
       messages
     };
+
+    if (userId) {
+      if (!requestData.extra_body) {
+        requestData.extra_body = {};
+      }
+      requestData.extra_body.xxai_app_user_id = userId;
+    }
 
     return this.makeRequest('POST', '/guardrails', requestData);
   }
 
   /**
-   * 检测文本提示词和多张图片的安全性 - 多模态检测
+   * Detect the security of text prompt and multiple images - multi-modal detection
    *
-   * 结合文本语义和多张图片内容进行安全检测。
+   * Combine the text semantic and multiple image content for security detection.
    *
-   * @param prompt 文本提示词（可以为空）
-   * @param images 图片文件的本地路径或HTTP(S)链接列表（不能为空）
-   * @param model 使用的模型名称，默认为多模态模型
-   * @returns 检测结果
+   * @param prompt Text prompt (can be empty)
+   * @param images The local path or HTTP(S) link list of the image file (cannot be empty)
+   * @param model The model name used, default is the multi-modal model
+   * @param userId Optional, the user ID of the tenant AI application, used for user-level risk control and audit tracking
+   * @returns The detection result
    *
-   * @throws {ValidationError} 输入参数无效
-   * @throws {AuthenticationError} 认证失败
-   * @throws {RateLimitError} 超出速率限制
-   * @throws {XiangxinAIError} 其他API错误
+   * @throws {ValidationError} Invalid input parameters
+   * @throws {AuthenticationError} Authentication failed
+   * @throws {RateLimitError} Exceeded rate limit
+   * @throws {XiangxinAIError} Other API errors
    *
    * @example
    * ```typescript
    * const images = ["/path/to/image1.jpg", "https://example.com/image2.jpg"];
-   * const result = await client.checkPromptImages("这些图片安全吗？", images);
+   * const result = await client.checkPromptImages("Are these images safe?", images);
    * console.log(result.overall_risk_level);
+   *
+   * // Pass user ID for tracking
+   * const result = await client.checkPromptImages("这些图片安全吗？", images, 'Xiangxin-Guardrails-VL', "user-123");
    * ```
    */
   async checkPromptImages(
     prompt: string,
     images: string[],
-    model: string = 'Xiangxin-Guardrails-VL'
+    model: string = 'Xiangxin-Guardrails-VL',
+    userId?: string
   ): Promise<GuardrailResponse> {
     if (!images || images.length === 0) {
       throw new ValidationError('Images list cannot be empty');
     }
 
-    // 构建消息内容
+    // Build the message content
     const content: any[] = [];
     if (prompt && prompt.trim()) {
       content.push({ type: 'text', text: prompt.trim() });
     }
 
-    // 编码所有图片
+    // Encode all images
     for (const imagePath of images) {
       try {
         const imageBase64 = await this.encodeBase64FromPath(imagePath);
@@ -401,30 +454,37 @@ export class XiangxinAI {
       }
     ];
 
-    const requestData: GuardrailRequest = {
+    const requestData: any = {
       model,
       messages
     };
+
+    if (userId) {
+      if (!requestData.extra_body) {
+        requestData.extra_body = {};
+      }
+      requestData.extra_body.xxai_app_user_id = userId;
+    }
 
     return this.makeRequest('POST', '/guardrails', requestData);
   }
 
   /**
-   * 检查API服务健康状态
+   * Check the health status of the API service
    */
   async healthCheck(): Promise<Record<string, any>> {
     return this.makeRequest('GET', '/guardrails/health');
   }
 
   /**
-   * 获取可用模型列表
+   * Get the list of available models
    */
   async getModels(): Promise<Record<string, any>> {
     return this.makeRequest('GET', '/guardrails/models');
   }
 
   /**
-   * 发送HTTP请求
+   * Send HTTP request
    */
   private async makeRequest(
     method: 'GET' | 'POST',
@@ -442,7 +502,7 @@ export class XiangxinAI {
           throw new XiangxinAIError(`Unsupported HTTP method: ${method}`);
         }
 
-        // 如果是护栏检测请求，返回结构化响应
+        // If it is a guardrails detection request, return the structured response
         if (['/guardrails', '/guardrails/input', '/guardrails/output'].includes(endpoint) && typeof response.data === 'object') {
           return response.data as GuardrailResponse;
         }
@@ -463,7 +523,7 @@ export class XiangxinAI {
               throw new ValidationError(`Validation error: ${errorDetail}`);
             } else if (status === 429) {
               if (attempt < this.maxRetries) {
-                // 指数退避重试
+                // Exponential backoff retry
                 const waitTime = (2 ** attempt) * 1000 + 1000;
                 await this.sleep(waitTime);
                 continue;
@@ -494,7 +554,7 @@ export class XiangxinAI {
             throw new NetworkError('Connection error');
           }
         } else {
-          // 这些错误不需要重试
+          // These errors do not need to be retried
           if (error instanceof AuthenticationError || 
               error instanceof ValidationError || 
               error instanceof RateLimitError) {
@@ -512,7 +572,7 @@ export class XiangxinAI {
   }
 
   /**
-   * 睡眠函数
+   * Sleep function
    */
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -520,37 +580,40 @@ export class XiangxinAI {
 }
 
 /**
- * GuardrailResponse 的扩展方法
+ * Extended methods for GuardrailResponse
  */
 export class GuardrailResponseHelper {
   /**
-   * 判断内容是否安全
+   * Check if the content is safe
    */
   static isSafe(response: GuardrailResponse): boolean {
-    return response.suggest_action === '通过';
+    return response.suggest_action === 'pass';
   }
 
   /**
-   * 判断内容是否被阻断
+   * Check if the content is blocked
    */
   static isBlocked(response: GuardrailResponse): boolean {
-    return response.suggest_action === '阻断';
+    return response.suggest_action === 'reject';
   }
 
   /**
-   * 判断是否有代答
+   * Check if there is a substitute
    */
   static hasSubstitute(response: GuardrailResponse): boolean {
-    return response.suggest_action === '代答' || response.suggest_action === '阻断';
+    return response.suggest_action === 'replace' || response.suggest_action === 'reject';
   }
 
   /**
-   * 获取所有风险类别
+   * Get all risk categories
    */
   static getAllCategories(response: GuardrailResponse): string[] {
     const categories = [];
     categories.push(...response.result.compliance.categories);
     categories.push(...response.result.security.categories);
-    return Array.from(new Set(categories)); // 去重
+    if (response.result.data) {
+      categories.push(...response.result.data.categories);
+    }
+    return Array.from(new Set(categories)); // Remove duplicates
   }
 }

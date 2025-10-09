@@ -1,5 +1,5 @@
 /**
- * 异常定义
+ * Exception definition
  */
 
 export class XiangxinAIError extends Error {
